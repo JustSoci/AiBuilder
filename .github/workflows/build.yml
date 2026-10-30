@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,16 +17,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.8'
-
-      - name: Build Mod JAR
-        run: gradle build --no-daemon
+      - name: Install Gradle & Build Mod JAR
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.8-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          export PATH="/tmp/gradle-8.8/bin:$PATH"
+          
+          # Automatically find the folder containing build.gradle
+          BUILD_FILE=$(find . -name "build.gradle" | head -n 1)
+          if [ -z "$BUILD_FILE" ]; then
+            echo "ERROR: build.gradle not found! Make sure you uploaded the mod files to the repository."
+            exit 1
+          fi
+          
+          BUILD_DIR=$(dirname "$BUILD_FILE")
+          echo "Found build.gradle in: $BUILD_DIR"
+          cd "$BUILD_DIR"
+          
+          gradle build --no-daemon --stacktrace
 
       - name: Upload Compiled Mod JAR
         uses: actions/upload-artifact@v4
         with:
           name: aibuilder-1.0.0-jar
-          path: build/libs/*.jar
+          path: "**/build/libs/*.jar"
